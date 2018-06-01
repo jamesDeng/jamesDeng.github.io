@@ -11,7 +11,7 @@ modify_date: 2018-6-1 18:13:00
 
 安装过程比较心酸，由于是阿里云上安装但是并不想使用阿里云提供的一站式解决方案，这样需要自己和阿里云盘、NAS、LBS集成，看了不少阿里云集成k8s的文章，k8s版本都比较低而，其中踩了不少坑在这里总结一下安装过程
 
-##服务器准备说明
+## 服务器准备说明
 1. 安装的ECS系统为 centos 7.4，使用阿里VPC网络，打通所有ECS之间的SSH通道，并且能够实现公钥登录，避免安装过程中频繁输入密码。
 2. 使用 172.16.0.188 做为总控机，[clone我归档好的资源项目](https://github.com/jamesDeng/k8s.git)aliyun_install目录到/opt下
 3. 服务器列表：
@@ -22,7 +22,7 @@ modify_date: 2018-6-1 18:13:00
 |k8s-slave2|172.16.0.190|node and etcd
 
 
-##安装etcd
+## 安装etcd
 使用了[玩转阿里云上Kubernetes 1.7.2 高可用部署](https://yq.aliyun.com/articles/221714?spm=a2c4e.11153940.blogcont562459.26.5a531c05GqTHSj)中的自动化部署脚本，但是由于并不支持高版本的etcd版本所以改了一下。
 
 1.解压安装包，执行下面命令安装
@@ -44,7 +44,7 @@ etcdctl --endpoints=https://172.16.0.188:2379 \
 ```Bash
 ./kuberun.sh --role destroy-etcd --hosts 172.16.0.188,172.16.0.189,172.16.0.190 --etcd-version v3.2.18
 ```
-##安装docker
+## 安装docker
 所有服务器都执行
 ```Bash
 curl -O https://yum.dockerproject.org/repo/main/centos/7/Packages/docker-engine-17.03.0.ce-1.el7.centos.x86_64.rpm
@@ -57,7 +57,7 @@ sed -i "/ExecStart=/a\ExecStartPost=/usr/sbin/iptables -P FORWARD ACCEPT" /lib/s
 systemctl daemon-reload ; systemctl enable  docker.service; systemctl restart docker.service
 ```
 
-##部署master
+## 部署master
 1.安装kubernetes master组件
 
 组件为kubeadm、kubectl、kubectl、kubernetes-cni，由于有墙无法通过Yum源的方式安装，需要手动下载需要版本的rmp文件进行安装。
@@ -216,7 +216,7 @@ kubectl create -f aliyun-disk.yaml
 kubectl create -f aliyun-flex.yaml
 kubectl create -f aliyun-nas-cotroller.yaml
 ```
-##七层负载均衡的支持
+## 七层负载均衡的支持
 本方案采用ingress进行七层负载均衡，也采用阿里云的SLB做请求入口，有别于阿里云官方方案的地方是我们并不使用阿里的load balancer，我是手动创建slb配制tcp端口80、443透传到nginx-ingress-controller部署机器。
 
 关于不用阿里云的load balancer我的思考如下：
@@ -258,7 +258,7 @@ kubectl create -f ingress-nginx/with-rbac.yaml
 ```Bash
 kubectl create -f ingress-nginx/dashboard-ingress.yml
 ```
-##添加一个Node
+## 添加一个Node
 请参照master安装
 
 1.安装docker
