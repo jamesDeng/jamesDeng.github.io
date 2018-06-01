@@ -1,8 +1,8 @@
 ---
 layout: article
 key: k8s_aliyun_install
-tags: k8s
 category: k8s
+tags: k8s
 title: k8s 阿里云安装
 modify_date: 2018-6-1 18:13:00
 ---
