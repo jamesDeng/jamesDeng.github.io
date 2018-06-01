@@ -13,7 +13,7 @@ modify_date: 2018-6-1 18:13:00
 
 ##服务器准备说明
 1. 安装的ECS系统为 centos 7.4，使用阿里VPC网络，打通所有ECS之间的SSH通道，并且能够实现公钥登录，避免安装过程中频繁输入密码。
-2. 使用 172.16.0.188 做为总控机，将本例中所以文件copy到/opt目录下
+2. 使用 172.16.0.188 做为总控机，clone[这个项目](https://github.com/jamesDeng/k8s.git)aliyun_install到/opt目录下
 3. 服务器列表：
 
 |k8s-master|172.16.0.188|master and etcd|
