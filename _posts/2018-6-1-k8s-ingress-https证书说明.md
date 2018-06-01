@@ -1,8 +1,7 @@
 ---
 layout: article
-key: k8s
+key: k8s_ingress_https
 comment: true
-title: Document - Writing Posts
 modify_date: 2018-6-1 17:58:00
 ---
 自建证书
