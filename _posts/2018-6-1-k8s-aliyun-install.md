@@ -254,7 +254,7 @@ kubectl create -f ingress-nginx/with-rbac.yaml
 
 3.拿dashboard做个实验
 
-创建一个dashboard-ingress，采用Https协议访问，[先设置kubernetes-dashboard-certs证书](证书说明.md)，然后执行命令
+创建一个dashboard-ingress，采用Https协议访问，[先设置kubernetes-dashboard-certs证书](https://jamesdeng.github.io/2018/06/01/k8s-ingress-https%E8%AF%81%E4%B9%A6%E8%AF%B4%E6%98%8E.html)，然后执行命令
 ```Bash
 kubectl create -f ingress-nginx/dashboard-ingress.yml
 ```
