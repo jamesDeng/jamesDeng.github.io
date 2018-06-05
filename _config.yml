@@ -99,9 +99,9 @@ disqus:
 ## Gitalk
 # please refer to https://github.com/gitalk/gitalk for more info.
 gitalk:
-  clientID: e33d0bf1a2f9daea01fd # GitHub Application Client ID
-  clientSecret: 6b9e0e668655b2970f6ab68f975a93bf88f6739d # GitHub Application Client Secret
-  repository: jamesDeng/jamesDeng.github.io # GitHub repo
+  clientID: 9d48c0fcf16c730a217f # GitHub Application Client ID
+  clientSecret: d400e34808790b112a923db1627e687dbcc19f81 # GitHub Application Client Secret
+  repository: jamesdeng.github.io # GitHub repo
   owner: jamesDeng # GitHub repo owner
   admin:  # GitHub repo owner and collaborators, only these guys can initialize GitHub issues, IT IS A LIST.
     - "jamesDeng"
