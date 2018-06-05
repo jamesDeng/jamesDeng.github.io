@@ -226,7 +226,7 @@ kubectl create -f aliyun-nas-cotroller.yaml
 
 下图为七层负载均衡架构图，[引用自阿里云](https://yq.aliyun.com/articles/69580?spm=a2c4e.11153940.blogcont562459.28.13ed1c05LVe7jY)
 
-![](https://github.com/jamesDeng/k8s/blob/master/aliyun_install/images/aliyun_slb.png)
+![](https://raw.githubusercontent.com/jamesDeng/k8s/master/aliyun_install/images/aliyun_slb.png)
 
 1.安装 ingress-nginx
 
@@ -250,7 +250,7 @@ kubectl create -f ingress-nginx/with-rbac.yaml
 
 2.设置阿里云SLB方式做对外服务，映射 tcp 80 和443 到master节点
 
-![](https://github.com/jamesDeng/k8s/blob/master/aliyun_install/images/aliyun_slb_set.png)
+![](https://raw.githubusercontent.com/jamesDeng/k8s/master/aliyun_install/images/aliyun_slb_set.png)
 
 3.拿dashboard做个实验
 
