@@ -26,7 +26,7 @@ modify_date: 2018-6-1 18:13:00
 使用了[玩转阿里云上Kubernetes 1.7.2 高可用部署](https://yq.aliyun.com/articles/221714?spm=a2c4e.11153940.blogcont562459.26.5a531c05GqTHSj)中的自动化部署脚本，但是由于并不支持高版本的etcd版本所以改了一下。
 
 1.解压安装包，执行下面命令安装
-```Java
+```Bash
 chmod 7777 kuberun.sh
 ./kuberun.sh --role deploy-etcd --hosts 172.16.0.188,172.16.0.189,172.16.0.190 --etcd-version v3.2.18
 ```
