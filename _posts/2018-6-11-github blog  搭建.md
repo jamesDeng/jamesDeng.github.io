@@ -107,5 +107,5 @@ jekyll的代码高亮需要使用如下语法
 ```
 个人感觉这样很不友好，在githup上根本没法看，正在找一种方式让blog支持原生的Markdown代码块写法
 参考文档
-=
+===
 [TeXt Theme 官方文档](https://tianqi.name/jekyll-TeXt-theme/docs/zh/quick-start)
