@@ -3,7 +3,7 @@ layout: article
 key: github_blog_install
 tags: blog
 comment: true
-modify_date: 2018-6-28 10:00:00
+modify_date: 2018-6-28 16:00:00
 ---
 # GitHub Blog
 忽然发现写blog很好，可以记录自己的成长过程，采用GitHub Pages方式构建blog，不用服务器感觉真好！
