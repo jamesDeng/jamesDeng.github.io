@@ -11,8 +11,8 @@ modify_date: 2018-6-28 10:00:00
 Jekyll是Github默认的模板系统,你可以在[Jekyll Themes](http://jekyllthemes.org/)找到你喜欢的模版fork下来，进行一系列配制就好了。
 博主选择的是 [jekyll-TeXt](https://tianqi.name/jekyll-TeXt-theme/),后面操作都基于该模版。
 ## 设置 Repository Settings
-1. 设置Repository name为"{自己的githup name}.githup.io",设置成功后就可以在浏览输入Repository name访问自己blog拉；![](../images/github_blog/Settings1.png)
-2. 设置开启Issues ，后面评论要用;![](../images/github_blog/Settings2.png)
+1. 设置Repository name为"{自己的githup name}.githup.io",设置成功后就可以在浏览输入Repository name访问自己blog拉；![](https://raw.githubusercontent.com/jamesDeng/jamesDeng.github.io/master/images/github_blog/Settings1.png)
+2. 设置开启Issues ，后面评论要用;![](https://raw.githubusercontent.com/jamesDeng/jamesDeng.github.io/master/images/github_blog/Settings2.png)
 ## 网站配制
 找到网站根目录下的_config.yml，可以进行相关配制
 ### 基础配制
@@ -50,8 +50,8 @@ repository_tree: master
 ```
 ### 评论
 为了没有墙的问题，采用的的gitalk，首先需要一个 GitHub Application，[点击这里申请](https://github.com/settings/applications/new),然后将相应的参数添加到 _config.yml 配置中
-![](../images/github_blog/githuba_app_apply1.png)
-![](../images/github_blog/githuba_app_apply2.png)
+![](https://raw.githubusercontent.com/jamesDeng/jamesDeng.github.io/master/images/github_blog/githuba_app_apply1.png)
+![](https://raw.githubusercontent.com/jamesDeng/jamesDeng.github.io/master/images/github_blog/githuba_app_apply2.png)
 ```YAML
 gitalk:
   clientID:  # GitHub Application Client ID
@@ -67,12 +67,12 @@ gitalk:
 TeXt 使用 LeanCloud 作为点击量功能的后台服务。你需要建立一个应用，然后在应用中建立一个 Class，之后将必要的信息填写到 _config.yml 文件中。下面详细介绍其操作步骤。
 
 [点击这里](https://leancloud.cn/)进行主页，点击免费试用进行注册和登录，点击创建应用选择开发版
-![](../images/github_blog/leancloud1.png)
+![](https://raw.githubusercontent.com/jamesDeng/jamesDeng.github.io/master/images/github_blog/leancloud1.png)
 点击应用上的存储进行存储管理页面，点击创建Class，设置数据条目的ACL 权限为无限制
-![](../images/github_blog/leancloud2.png)
+![](https://raw.githubusercontent.com/jamesDeng/jamesDeng.github.io/master/images/github_blog/leancloud2.png)
 最后点击应用面板右侧的“设置”，点击“应用 Key” 选项，即可得到对应的 APP ID 和 APP KEY：
-![](../images/github_blog/leancloud3.png)
-![](../images/github_blog/leancloud4.png)
+![](https://raw.githubusercontent.com/jamesDeng/jamesDeng.github.io/master/images/github_blog/leancloud3.png)
+![](https://raw.githubusercontent.com/jamesDeng/jamesDeng.github.io/master/images/github_blog/leancloud4.png)
 ```YAML
 leancloud:
   app_id: kN1v8C5Og8KFAqD9xFpnpbRW-gzGzoHsz # LeanCloud App id
