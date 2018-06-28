@@ -52,6 +52,7 @@ repository_tree: master
 为了没有墙的问题，采用的的gitalk，首先需要一个 GitHub Application，[点击这里申请](https://github.com/settings/applications/new),然后将相应的参数添加到 _config.yml 配置中
 ![](https://raw.githubusercontent.com/jamesDeng/jamesDeng.github.io/master/images/github_blog/githuba_app_apply1.png)
 ![](https://raw.githubusercontent.com/jamesDeng/jamesDeng.github.io/master/images/github_blog/githuba_app_apply2.png)
+
 ```YAML
 gitalk:
   clientID:  # GitHub Application Client ID
@@ -62,6 +63,7 @@ gitalk:
     - "xxxx"
     # - your GitHub Id
 ```
+
 这里需要注意的是gitalk是基于github Issues的，所以前面有提示项目Issues必须是打开的，然后你需要在页面的头信息里设置 key 属性来开启该页的评论。
 ### 点击量
 TeXt 使用 LeanCloud 作为点击量功能的后台服务。你需要建立一个应用，然后在应用中建立一个 Class，之后将必要的信息填写到 _config.yml 文件中。下面详细介绍其操作步骤。
