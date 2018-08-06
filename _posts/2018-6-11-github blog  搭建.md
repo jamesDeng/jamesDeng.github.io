@@ -98,14 +98,6 @@ title: k8s 阿里云安装
 modify_date: 2018-6-1 18:13:00
 ---
 ```
-### 代码高亮
-jekyll的代码高亮需要使用如下语法
-```Javascript
-{ % highlight javascript % }
-..代码..
-{% endhighlight %}
-```
-个人感觉这样很不友好，在githup上根本没法看，正在找一种方式让blog支持原生的Markdown代码块写法
 
 参考文档
 ===
