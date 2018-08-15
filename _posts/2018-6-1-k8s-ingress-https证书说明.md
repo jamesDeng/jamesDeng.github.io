@@ -7,13 +7,13 @@ modify_date: 2018-6-1 17:58:00
 ---
 自建证书
 # 生成 CA 自签证书
-```Bash
+``` bash
 mkdir cert && cd cert
 openssl genrsa -out ca-key.pem 2048
 openssl req -x509 -new -nodes -key ca-key.pem -days 10000 -out ca.pem -subj "/CN=kube-ca"
 ```
 # 编辑 openssl 配置
-```Bash
+``` bash
 cp /etc/pki/tls/openssl.cnf .
 vim openssl.cnf
 
@@ -31,16 +31,16 @@ DNS.2 = kibana.mritd.me
 ```
 
 # 生成证书
-```Bash
+``` bash
 openssl genrsa -out ingress-key.pem 2048
 openssl req -new -key ingress-key.pem -out ingress.csr -subj "/CN=kube-ingress" -config openssl.cnf
 openssl x509 -req -in ingress.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out ingress.pem -days 365 -extensions v3_req -extfile openssl.cnf
 ```
 # 添加证书到k8s
-```Bash
+``` bash
 kubectl create secret tls ingress-secret --key ./ingress-key.pem --cert ./ingress.pem -n kube-system
 ```
 # 添加阿里生成证书
-```Bash
+``` bash
 kubectl create secret tls kubernetes-dashboard-certs --key ./***.key --cert ./****.pem -n kube-system
 ```
