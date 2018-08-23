@@ -11,44 +11,51 @@ modify_date: 2018-6-1 18:13:00
 
 安装过程比较心酸，由于是阿里云上安装但是并不想使用阿里云提供的一站式解决方案，这样需要自己和阿里云盘、NAS、LBS集成，看了不少阿里云集成k8s的文章，k8s版本都比较低而，其中踩了不少坑在这里总结一下安装过程
 
+## 服务器结构
+|实例|IP|功能
+|cn-shenzhen.i-wz9ajgzn6b8rw9ghlc37|172.16.0.191|master and etcd|
+|cn-shenzhen.i-wz9ajgzn6b8rw9ghlc36|172.16.0.192|master and etcd|
+|cn-shenzhen.i-wz9ajgzn6b8rw9ghlc38|172.16.0.193|master and etcd|
+|cn-shenzhen.i-wz9ccilmjj2nxbnev86o|172.16.0.194|node
+|k8s-slave2|172.16.0.194|node
+|阿里内网 slb|172.16.0.186|
+
 ## 服务器准备说明
 1. 安装的ECS系统为 centos 7.4，使用阿里VPC网络，打通所有ECS之间的SSH通道，并且能够实现公钥登录，避免安装过程中频繁输入密码。
-2. 使用 172.16.0.188 做为总控机，[clone我归档好的资源项目](https://github.com/jamesDeng/k8s.git)aliyun_install目录到/opt下
-3. 服务器列表：
-
-|k8s-master|172.16.0.188|master and etcd|
-|---|---|----
-|k8s-slave1|172.16.0.189|node and etcd
-|k8s-slave2|172.16.0.190|node and etcd
-
-
-## 安装etcd
-使用了[玩转阿里云上Kubernetes 1.7.2 高可用部署](https://yq.aliyun.com/articles/221714?spm=a2c4e.11153940.blogcont562459.26.5a531c05GqTHSj)中的自动化部署脚本，但是由于并不支持高版本的etcd版本所以改了一下。
-
-1.解压安装包，执行下面命令安装
-```Bash
-chmod 7777 kuberun.sh
-./kuberun.sh --role deploy-etcd --hosts 172.16.0.188,172.16.0.189,172.16.0.190 --etcd-version v3.2.18
+2. 使用 172.16.0.191 做为总控机，[clone归档好的资源项目](https://github.com/jamesDeng/k8s.git)
+3. 创建阿里云内网slb,映射6443端口到3台master
+4. hostname写入
+``` bash
+cat>>/etc/hosts<<EOF
+172.16.0.191 cn-shenzhen.i-wz9ajgzn6b8rw9ghlc37
+172.16.0.192 cn-shenzhen.i-wz9ajgzn6b8rw9ghlc36 
+172.16.0.193 cn-shenzhen.i-wz9ajgzn6b8rw9ghlc38
+172.16.0.186 k8s-master-lb 
+EOF
 ```
-2.验证安装是成功
-通过ps -eaf|grep etcd查看进程是否正常启动。
-通过命令
-```Bash
-etcdctl --endpoints=https://172.16.0.188:2379 \
-        --ca-file=/var/lib/etcd/cert/ca.pem \
-        --cert-file=/var/lib/etcd/cert/etcd-client.pem \
-        --key-file=/var/lib/etcd/cert/etcd-client-key.pem \
-        cluster-health
-```
-3.如发现有问题可执行命令撤消安装
-```Bash
-./kuberun.sh --role destroy-etcd --hosts 172.16.0.188,172.16.0.189,172.16.0.190 --etcd-version v3.2.18
-```
+
 ## 安装docker
 所有服务器都执行
-```Bash
-curl -O https://yum.dockerproject.org/repo/main/centos/7/Packages/docker-engine-17.03.0.ce-1.el7.centos.x86_64.rpm
-yum localinstall -y docker-engine-17.03.0.ce-1.el7.centos.x86_64.rpm
+``` bash
+#卸载安装指定版本docker-ce
+yum remove -y docker-ce docker-ce-selinux container-selinux
+#配制docker源
+sudo yum install -y yum-utils \
+  device-mapper-persistent-data \
+  lvm2
+yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+
+yum install -y --setopt=obsoletes=0 \
+  docker-ce-17.03.1.ce-1.el7.centos \
+  docker-ce-selinux-17.03.1.ce-1.el7.centos
+
+#配制阿里云docker加速
+sudo mkdir -p /etc/docker
+sudo tee /etc/docker/daemon.json <<-'EOF'
+{
+  "registry-mirrors": ["https://8dxol81m.mirror.aliyuncs.com"]
+}
+EOF
 
 sed -i '$a net.bridge.bridge-nf-call-iptables = 1' /usr/lib/sysctl.d/00-system.conf
 echo 1 > /proc/sys/net/bridge/bridge-nf-call-iptables
@@ -56,21 +63,26 @@ iptables -P FORWARD ACCEPT
 sed -i "/ExecStart=/a\ExecStartPost=/usr/sbin/iptables -P FORWARD ACCEPT" /lib/systemd/system/docker.service
 systemctl daemon-reload ; systemctl enable  docker.service; systemctl restart docker.service
 ```
+## 安装 kubeadm、kubectl、kubectl、kubernetes-cni
+所有服务器都执行
+``` bash
+#配置源
+cat <<EOF > /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg https://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
+EOF
 
-## 部署master
-1.安装kubernetes master组件
-
-组件为kubeadm、kubectl、kubectl、kubernetes-cni，由于有墙无法通过Yum源的方式安装，需要手动下载需要版本的rmp文件进行安装。
-
-本例中提供 1.10版本rpm,安装包下载完成后执行:
-```Bash
-cd kubernetes
-yum install socat
-yum localinstall -y *
+#安装
+yum install -y kubelet-1.10.7-0 kubeadm-1.10.7-0 kubectl-1.10.7-0 kubernetes-cni-0.6.0
 ```
-
-2.启动前准备
-```Bash
+## 配制系统相关参数
+所有服务器都执行
+``` bash
 systemctl stop firewalld
 systemctl disable firewalld
 
@@ -83,138 +95,137 @@ sed -i "s/^SELINUX=enforcing/SELINUX=disabled/g" /etc/selinux/config
 sed -i "s/^SELINUX=permissive/SELINUX=disabled/g" /etc/sysconfig/selinux 
 sed -i "s/^SELINUX=permissive/SELINUX=disabled/g" /etc/selinux/config  
 ```
+## 配置启动kubelet
+所有服务器都执行
+``` bash
+#配置kubelet使用国内pause镜像
+#配置kubelet的cgroups
+#获取docker的cgroups
 
-3.由于墙docker 无法下载官方image,可以去阿里云docker仓库下载改成官方版本。
-
-这里提供是1.10版本的docker image
-```Bash
-docker pull registry.cn-hangzhou.aliyuncs.com/google_containers/kube-apiserver-amd64:v1.10.0
-docker tag registry.cn-hangzhou.aliyuncs.com/google_containers/kube-apiserver-amd64:v1.10.0 k8s.gcr.io/kube-apiserver-amd64:v1.10.0
-
-docker pull registry.cn-hangzhou.aliyuncs.com/google_containers/kube-controller-manager-amd64:v1.10.0
-docker tag registry.cn-hangzhou.aliyuncs.com/google_containers/kube-controller-manager-amd64:v1.10.0 k8s.gcr.io/kube-controller-manager-amd64:v1.10.0
-
-docker pull registry.cn-hangzhou.aliyuncs.com/google_containers/kube-scheduler-amd64:v1.10.0
-docker tag registry.cn-hangzhou.aliyuncs.com/google_containers/kube-scheduler-amd64:v1.10.0 k8s.gcr.io/kube-scheduler-amd64:v1.10.0
-
-docker pull registry.cn-hangzhou.aliyuncs.com/google_containers/etcd-amd64:3.1.12
-docker tag registry.cn-hangzhou.aliyuncs.com/google_containers/etcd-amd64:3.1.12 k8s.gcr.io/etcd-amd64:3.1.12
-
-docker pull registry.cn-hangzhou.aliyuncs.com/google_containers/pause-amd64:3.1
-docker tag registry.cn-hangzhou.aliyuncs.com/google_containers/pause-amd64:3.1 k8s.gcr.io/pause-amd64:3.1
-
-docker pull registry.cn-hangzhou.aliyuncs.com/google_containers/k8s-dns-dnsmasq-nanny-amd64:1.14.5
-docker tag registry.cn-hangzhou.aliyuncs.com/google_containers/k8s-dns-dnsmasq-nanny-amd64:1.14.5 k8s.gcr.io/k8s-dns-dnsmasq-nanny-amd64:1.14.5
-
-docker pull registry.cn-hangzhou.aliyuncs.com/google_containers/k8s-dns-kube-dns-amd64:1.14.5
-docker tag registry.cn-hangzhou.aliyuncs.com/google_containers/k8s-dns-kube-dns-amd64:1.14.5 k8s.gcr.io/k8s-dns-kube-dns-amd64:1.14.5
-
-docker pull registry.cn-hangzhou.aliyuncs.com/google_containers/k8s-dns-sidecar-amd64:1.14.5
-docker tag registry.cn-hangzhou.aliyuncs.com/google_containers/k8s-dns-sidecar-amd64:1.14.5 k8s.gcr.io/k8s-dns-sidecar-amd64:1.14.5
-
-docker pull registry.cn-hangzhou.aliyuncs.com/google-containers/flannel:v0.9.0-amd64
-docker tag registry.cn-hangzhou.aliyuncs.com/google-containers/flannel:v0.9.0-amd64 quay.io/coreos/flannel:v0.9.0-amd64
-```
-
-4.修改kubelet配置文件
-```Bash
 vi /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
 
 修改这一行
 Environment="KUBELET_CGROUP_ARGS=--cgroup-driver=cgroupfs"
 
 添加下面这行，为支持阿里云云盘插件停用enable-controller-attach-detach
-Environment="KUBELET_ALIYUN=--enable-controller-attach-detach=false"
+Environment="KUBELET_ALIYUN=--enable-controller-attach-detach=false --pod-infra-container-image=registry.cn-hangzhou.aliyuncs.com/google_containers/pause-amd64:3.1"
 
 在执行命令添加 $KUBELET_ALIYUN
 ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_SYSTEM_PODS_ARGS $KUBELET_NETWORK_ARGS $KUBELET_DNS_ARGS $KUBELET_AUTHZ_ARGS $KUBELET_CADVISOR_ARGS $KUBELET_CGROUP_ARGS $KUBELET_CERTIFICATE_ARGS $KUBELET_EXTRA_ARGS $KUBELET_ALIYUN
-```
-执行
-```Bash
+
+#启动
 systemctl daemon-reload
-systemctl enable kubelet
+systemctl enable kubelet && systemctl restart kubelet
 ```
 
-5.编写kubernetes 初始化配置文件
-将配置文件保存在/etc/kubeadm/kubeadm.cfg
-```Yaml
+## master安装etcd
+使用了[玩转阿里云上Kubernetes 1.7.2 高可用部署](https://yq.aliyun.com/articles/221714?spm=a2c4e.11153940.blogcont562459.26.5a531c05GqTHSj)中的自动化部署脚本，但是由于并不支持高版本的etcd版本所以改了一下。
+
+1.172.16.0.191上git clone 命令，执行下面命令安装
+``` bash
+git clone https://github.com/jamesDeng/k8s.git
+cd k8s/aliyun_install/etcd
+chmod 7777 kuberun.sh
+./kuberun.sh --role deploy-etcd --hosts 172.16.0.191,172.16.0.192,172.16.0.193 --etcd-version v3.2.18
+```
+2.验证安装是成功
+通过ps -eaf|grep etcd查看进程是否正常启动。
+通过命令
+``` bash
+etcdctl --endpoints=https://172.16.0.191:2379 \
+        --ca-file=/var/lib/etcd/cert/ca.pem \
+        --cert-file=/var/lib/etcd/cert/etcd-client.pem \
+        --key-file=/var/lib/etcd/cert/etcd-client-key.pem \
+        cluster-health
+```
+3.如发现有问题可执行命令撤消安装
+``` bash
+./kuberun.sh --role destroy-etcd --hosts 172.16.0.191,172.16.0.192,172.16.0.193 --etcd-version v3.2.18
+```
+
+## 部署 master1
+``` bash
+cat>kubeadm.cfg<<EOF
 apiVersion: kubeadm.k8s.io/v1alpha1
 kind: MasterConfiguration
+kubernetesVersion: v1.10.7
+imageRepository: registry.cn-hangzhou.aliyuncs.com/google_containers
 networking:
-  dnsDomain: cluster.local
-  serviceSubnet: 10.19.0.0/16
   podSubnet: 10.16.0.0/16
-kubernetesVersion: v1.10.0
 etcd:
   endpoints:
-  - https://172.16.0.188:2379
-  - https://172.16.0.189:2379
-  - https://172.16.0.190:2379
+  - https://172.16.0.191:2379
+  - https://172.16.0.192:2379
+  - https://172.16.0.193:2379
   caFile: /etc/kubernetes/pki/etcd/ca.pem
   certFile: /etc/kubernetes/pki/etcd/etcd-client.pem
   keyFile: /etc/kubernetes/pki/etcd/etcd-client-key.pem
 apiServerCertSANs:
-  - 172.16.0.188
-  - 172.16.0.189
-  - 172.16.0.190
-```
-6.执行初始化kubernetes 指令
-```Bash
+- "cn-shenzhen.i-wz9ajgzn6b8rw9ghlc37"
+- "cn-shenzhen.i-wz9ajgzn6b8rw9ghlc36"
+- "cn-shenzhen.i-wz9ajgzn6b8rw9ghlc38"
+- "172.16.0.191"
+- "172.16.0.192"
+- "172.16.0.193"
+- "172.16.0.186"
+- "127.0.0.1"
+- "k8s-master-lb"
+apiServerExtraArgs:
+  apiserver-count: "3"
+EOF
+
+#copy etcd 证书到相关目录
 mkdir -p /etc/kubernetes/pki/etcd/
 cp -rf /var/lib/etcd/cert/{ca.pem,etcd-client.pem,etcd-client-key.pem} /etc/kubernetes/pki/etcd/
-kubeadm init --config=/etc/kubeadm/kubeadm.cfg
+
+#执行初始化kubernetes 指令
+kubeadm init --config=kubeadm.cfg
+
+#复制ca相关文件上传至其他master节点
+scp  /etc/kubernetes/pki/* root@172.16.0.192:/etc/kubernetes/pki/
+scp  /etc/kubernetes/pki/* root@172.16.0.193:/etc/kubernetes/pki/
+ssh 172.16.0.192 'rm -f /etc/kubernetes/pki/apiserver*'
 ```
-如果执行成功，请根据提示执行相关命令设置环境
-```Bash
+如果执行成功，请根据提示执行相关命令设置环境。执行失败，可以执行kubeadm reset回滚，修改配制后再执行上面的命令
+``` bash
 mkdir -p $HOME/.kube
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 ```
-如果执行失败，可以执行kubeadm reset回滚，修改配制后再执行上面的命令
-7.执行DNS配制，解决无法解析公网DNS问题
-```Bash
-kubectl create -f kube-dns.yaml
+## 部署其它Master
+其它master与master1的部署方式相同，除复制ca相关文件上传至其他master节点这步不执行
+
+## 安装flannel作为网络组件
+``` bash
+wget https://raw.githubusercontent.com/coreos/flannel/v0.10.0/Documentation/kube-flannel.yml
+
+#修改配置
+#此处的ip配置要与上面kubeadm的pod-network一致
+  net-conf.json: |
+    {
+      "Network": "10.244.0.0/16",
+      "Backend": {
+        "Type": "vxlan"
+      }
+    }
+
+#修改镜像
+image: registry.cn-shanghai.aliyuncs.com/gcr-k8s/flannel:v0.10.0-amd64
+
+#启动
+kubectl apply -f kube-flannel.yml
+
+#查看
+kubectl get pods --namespace kube-system
+kubectl get svc --namespace kube-system
 ```
-8.本例使用flannel作为网络组件,Yaml文件安装包提供
-```Bash
-kubectl apply -f flannel.yml
-```
-9.部署dashboard
-```Bash
-kubectl create -f dashboard.yaml
-```
-获取token,通过令牌登陆
-```Bash
-kubectl -n kube-system describe secret $(kubectl -n kube-system get secret | grep admin-user | awk '{print $1}')
-```
-通过浏览器访问dashboard，输入token,即可登陆
-```Url
-https://IP:30000/#!/login
-```
-10.安装heapster
-```Bash
-kubectl create -f kube-heapster/influxdb/
-```
-11.让master也运行pod（默认master不运行pod）
-```Bash
-kubectl taint nodes --all node-role.kubernetes.io/master-
-```
-12.安装阿里云盘插件，引用[阿里云官网教程](https://help.aliyun.com/document_detail/63955.html?spm=a2c4e.11153940.blogcont495754.15.b69131fePn6YpD)
-新建/etc/kubernetes/cloud-config文件,写入阿里云相关配制
-```Bash
-vi /etc/kubernetes/cloud-config
-{
-    "global": {
-     "accessKeyID": "阿里云accessKeyID",
-     "accessKeySecret": "阿里云accessKeySecret"
-   }
-}
-```
-执行安装插件
-```Bash
-kubectl create -f aliyun-disk.yaml
-kubectl create -f aliyun-flex.yaml
-kubectl create -f aliyun-nas-cotroller.yaml
+## 执行CoreDNS配制
+``` bash
+git clone https://github.com/coredns/deployment.git
+cd deployment/kubernetes
+yum -y install jq
+./deploy.sh | kubectl apply -f -
+kubectl delete --namespace=kube-system deployment kube-dns
 ```
 ## 七层负载均衡的支持
 本方案采用ingress进行七层负载均衡，也采用阿里云的SLB做请求入口，有别于阿里云官方方案的地方是我们并不使用阿里的load balancer，我是手动创建slb配制tcp端口80、443透传到nginx-ingress-controller部署机器。
@@ -228,56 +239,152 @@ kubectl create -f aliyun-nas-cotroller.yaml
 
 ![](https://raw.githubusercontent.com/jamesDeng/k8s/master/aliyun_install/images/aliyun_slb.png)
 
-1.安装 ingress-nginx
+### 安装 ingress-nginx
+``` bash
+wget https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/mandatory.yaml
 
-[安装yaml全部为github拉取](https://github.com/kubernetes/ingress-nginx/tree/master/deploy)，只对 with-rbac.yaml 做了修改：
-```Yaml
-#添加了使用Node网络，会使用部署的Node节点中80和443端口   
-hostNetwork: true
+#修改 default-http-backend 的images
+image: registry.cn-shenzhen.aliyuncs.com/common-images/defaultbackend:1.4
+
+kubectl apply -f mandatory.yaml
+
+#添加service开放 30080与30433端口
+cat>ingress-nginx-service.yaml<<EOF
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingress-nginx
+  namespace: ingress-nginx
+spec:
+  type: NodePort
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+    nodePort: 30080
+    protocol: TCP
+  - name: https
+    port: 443
+    targetPort: 443
+    protocol: TCP
+    nodePort: 30443
+  selector:
+    app: ingress-nginx
+EOF
+kubectl apply -f ingress-nginx-service.yaml
 ```
-执行
-```Bash
-kubectl create -f ingress-nginx/namespace.yaml
-kubectl create -f ingress-nginx/configmap.yaml
-kubectl create -f ingress-nginx/default-backend.yaml
-kubectl create -f ingress-nginx/tcp-services-configmap.yaml
-kubectl create -f ingress-nginx/udp-services-configmap.yaml
-kubectl create -f ingress-nginx/rbac.yaml
-kubectl create -f ingress-nginx/with-rbac.yaml
-```
-
-这里有个问题，nginx-ingress-controller是一个单点，应该可以改成多点，使用 nodeSelector运行在指令的node上
-
-2.设置阿里云SLB方式做对外服务，映射 tcp 80 和443 到master节点
-
+### 设置阿里云SLB
+映射 tcp 30080 和30443 到master节点
 ![](https://raw.githubusercontent.com/jamesDeng/k8s/master/aliyun_install/images/aliyun_slb_set.png)
 
-3.拿dashboard做个实验
+## 部署dashboard
+``` bash
+wget https://raw.githubusercontent.com/kubernetes/dashboard/master/src/deploy/recommended/kubernetes-dashboard.yaml
 
-创建一个dashboard-ingress，采用Https协议访问，[先设置kubernetes-dashboard-certs证书](https://jamesdeng.github.io/2018/06/01/k8s-ingress-https%E8%AF%81%E4%B9%A6%E8%AF%B4%E6%98%8E.html)，然后执行命令
-```Bash
-kubectl create -f ingress-nginx/dashboard-ingress.yml
+#修改 images
+image: registry.cn-hangzhou.aliyuncs.com/k8sth/kubernetes-dashboard-amd64:v1.8.3
+
+kubectl apply -f kubernetes-dashboard.yaml
+
+#删除老证书
+kubectl delete secrets kubernetes-dashboard-certs -n kube-system
+
+#配制dashboard https证书,相关证书可以在阿里云申请免费的
+kubectl create secret tls kubernetes-dashboard-certs --key ./214658435890700.key --cert ./214658435890700.pem -n kube-system
+#
+
+#创建管理用户
+cat >admin-user.yaml<<EOF
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: admin-user
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: admin-user
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: admin-user
+  namespace: kube-system
+EOF
+kubectl apply -f admin-user.yaml 
+
+#配制ingress
+cat >dashboard-ingress.yaml<<EOF
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/secure-backends: "true"
+  name: dashboard-ingress
+  namespace: kube-system
+spec:
+  tls:
+  - hosts:
+    - k8s.xxxx.xxx
+    secretName: kubernetes-dashboard-certs
+  rules:
+  - host: k8s.xxx.xxx
+    http:
+      paths:
+      - backend:
+          serviceName: kubernetes-dashboard
+          servicePort: 443
+EOF
+kubectl apply -f dashboard-ingress.yaml 
+
+#获取token用于登录
+kubectl -n kube-system describe secret $(kubectl -n kube-system get secret | grep admin-user | awk '{print $1}')
 ```
+## 让master也运行pod（默认master不运行pod）
+``` bash
+kubectl taint nodes --all node-role.kubernetes.io/master-
+
+```
+
+## 安装阿里云盘插件
+引用[阿里云官网教程](https://help.aliyun.com/document_detail/63955.html?spm=a2c4e.11153940.blogcont495754.15.b69131fePn6YpD)
+新建/etc/kubernetes/cloud-config文件,写入阿里云相关配制
+``` bash
+cat >/etc/kubernetes/cloud-config<<EOF
+{
+    "global": {
+     "accessKeyID": "xxx",
+     "accessKeySecret": "xxxx"
+   }
+}
+EOF
+```
+执行安装插件
+```Bash
+kubectl create -f aliyun-disk.yaml
+kubectl create -f aliyun-flex.yaml
+kubectl create -f aliyun-nas-cotroller.yaml
+```
+
 ## 添加一个Node
-请参照master安装
+master上获取node节点加入集群命令
+``` bash
+#执行
+kubeadm token create --print-join-command
 
-1.安装docker
-
-2.安装kubeadm、kubectl、kubectl、kubernetes-cni
-
-3.执行启动前准备
-
-4.拉取docker image
-
-5.修改kubelet配置文件，这里需要追加一处修改
-```Bash
-#把执行命令中的 $KUBELET_NETWORK_ARGS 删除，不启用 network-plugin=cni
-ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_SYSTEM_PODS_ARGS $KUBELET_DNS_ARGS $KUBELET_AUTHZ_ARGS $KUBELET_CADVISOR_ARGS $KUBELET_CGROUP_ARGS $KUBELET_CERTIFICATE_ARGS $KUBELET_EXTRA_ARGS $KUBELET_ALIYUN
+##获取命令如下
+kubeadm join 172.16.0.191:6443 --token hzdi31.lv0137qp6l7zye8h --discovery-token-ca-cert-hash sha256:a6049f6339098b0f4d98773d343f62e94ed314bbba1e8f2ab936d281b29c5ca5
 ```
+这里需要修改 172.16.0.191 为slb的ip 172.16.0.186
 
-6.执行命令加入node
-
-在初始化master的命令 kubeadm init --config=/etc/kubeadm/kubeadm.cfg 执行成功后会提示如下的加入命令，在node运行就加入集群
-```Bash
-kubeadm join 192.168.150.186:6443 --token b99a00.a144ef80536d4344 --discovery-token-ca-cert-hash sha256:f79b68fb698c92b9336474eb3bf184e847f967dc58a6296911892662b98b1315
+如果出现以下错误，可以添加  --ignore-preflight-errors cri 解决
+``` bash
+        [WARNING Hostname]: hostname "cn-shenzhen.izwz9ccilmjj2nxbnev86o" could not be reached
+        [WARNING Hostname]: hostname "cn-shenzhen.izwz9ccilmjj2nxbnev86o" lookup cn-shenzhen.izwz9ccilmjj2nxbnev86o on 100.100.2.138:53: no such host
+[preflight] Some fatal errors occurred:
+        [ERROR CRI]: unable to check if the container runtime at "/var/run/dockershim.sock" is running: exit status 1
+[preflight] If you know what you are doing, you can make a check non-fatal with `--ignore-preflight-errors=...`
 ```
