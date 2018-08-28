@@ -22,11 +22,10 @@ Prometheus 为k8s 1.11推荐的集群监控和警报平台,Operator是CoreOS开�
 * ServiceMonitor: 一个Kubernetes自定义资料，该资源描述了Prometheus Server的Target列表，Operator会监听这个资源的变化来动态更新 Prometheus Server的Scrape targets。而该资源主要透过 Selector 来依据 Labels 选取对应的 Service Endpoint,并让 Prometheus Serve 透过 Service 进行拉取 Metrics 资料；
 * Service: kubernetes 中的 Service 资源，这边主要用来对应 Kubernetes 中 Metrics Server Pod,然后提供给 ServiceMonitor 选取让 Prometheus Server 拉取资料，在 Prometheus 术语中可以称为 Target,即被 Prometheus 监测的对象，如一個部署在 Kubernetes 上的 Node Exporter Service。
 * Alertmanager: 接收从 Prometheus 来的 event,再根据定义的 notification 组决定要通知的方法。
+
 ## 安装
 采用 helm chart 方式安装
 ``` bash
-
-
 helm repo add coreos https://s3-eu-west-1.amazonaws.com/coreos-charts/stable/
 helm install coreos/prometheus-operator --name prometheus-operator --namespace monitoring
 #设置安装 CoreDNS
