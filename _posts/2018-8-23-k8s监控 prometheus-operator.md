@@ -68,6 +68,7 @@ kubectl edit deploy kube-prometheus-grafana -n monitoring
         - name: GF_AUTH_ANONYMOUS_ENABLED
           value: "false" 
 ```
+
 ## 使用
 访问 grafana.domain.com，用户密码都为 admin
 
