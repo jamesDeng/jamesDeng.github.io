@@ -5,7 +5,15 @@ tags: gitlab CI/CD
 comment: true
 modify_date: 2018-9-10 14:30:00
 ---
-## 安装GitLab Runner
+在devops开发流程中，ci/cd是很非常重要的步骤，它赋予了我们快速迭代的可能:
+
+* ci(持续构建) 代码提交后触发自动化的单元测试，代码预编译，构建镜像，上传镜像等．
+* cd(持续发布) 持续发布则指将构建好的程序发布到各种环境，如预发布环境，正式环境．
+
+GitLab CI/CD 通过在项目内 .gitlab-ci.yaml 配置文件读取 CI 任务并进行相应处理；GitLab CI 通过其称为 GitLab Runner 的 Agent 端进行 build 操作，结构如下：
+![](https://docs.gitlab.com/ee/ci/img/cicd_pipeline_infograph.png)
+
+## GitLab Runner
 gitlab 的CI/CD任务需要GitLab Runner运维，Runner可以是虚拟机、VPS、裸机、docker容器、甚至一堆容器。GitLab和Runners通过API通信，所以唯一的要求就是运行Runners的机器可以联网，，参考[官方文档](https://docs.gitlab.com/runner/install/linux-repository.html)进行安装
 ``` bash
 #机器为 CentOS 7.4
