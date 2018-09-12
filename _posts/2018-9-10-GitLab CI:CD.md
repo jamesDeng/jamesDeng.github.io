@@ -5,7 +5,6 @@ tags: gitlab CI/CD
 comment: true
 modify_date: 2018-9-10 14:30:00
 ---
-# GitLab CI/CD
 ## 安装GitLab Runner
 gitlab 的CI/CD任务需要GitLab Runner运维，Runner可以是虚拟机、VPS、裸机、docker容器、甚至一堆容器。GitLab和Runners通过API通信，所以唯一的要求就是运行Runners的机器可以联网，，参考[官方文档](https://docs.gitlab.com/runner/install/linux-repository.html)进行安装
 ``` bash
@@ -17,7 +16,7 @@ yum install gitlab-runner
 gitlab-runner status
 ```
 Runner 通过注册的方式添加需要服务的Project、Group或者整个gitlab,在Project/Group->CI/CD->Runners settings查找需要的registration token
-![](runners-settings.png)
+![](https://raw.githubusercontent.com/jamesDeng/jamesDeng.github.io/master/images/gitlab-cicd/runners-settings.png)
 执行[官方文档](https://docs.gitlab.com/runner/register/index.html)的设置步骤
 ``` bash
 $ gitlab-runner register
@@ -43,7 +42,7 @@ Runner registered successfully. Feel free to start it, but if it's running alrea
 $ gitlab-runner list
 ```
 在 Project/Group->CI/CD->Runners settings 查看是否可以使用
-![](runners-registration.png)
+![](https://raw.githubusercontent.com/jamesDeng/jamesDeng.github.io/master/images/gitlab-cicd/runners-registration.png)
 ## .gitlab-ci.yml
 .gitlab-ci.yml是用来配置CI在我们的项目中做些什么工作，它位于项目的根目录。
 
@@ -177,7 +176,7 @@ bXlfdXNlcm5hbWU6bXlfcGFzc3dvcmQ=
 公司项目基于 k8s helm 进行发布，这里介绍怎样基于 k8s helm 做 CD
 
 首先需要做一个 kubectl and helm 的镜像
-``` Dockerfile
+``` yaml
 FROM alpine:3.4
 
 #注意 kubectl 和 helm 的版本
